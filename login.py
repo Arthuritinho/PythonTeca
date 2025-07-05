@@ -2,13 +2,10 @@ import tkinter as tk
 from tkinter import messagebox
 import hashlib
 import db
-import dashboard
 
-# Gerar o hash da senha
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Verificar o login
 def login(username, password):
     conn = db.connect()
     cursor = conn.cursor()
@@ -17,17 +14,12 @@ def login(username, password):
     cursor.execute("SELECT id FROM users WHERE username=? AND password_hash=?", (username, password_hash))
     result = cursor.fetchone()
     conn.close()
+    return result[0] if result else None
 
-    if result:
-        return result[0]  # Retorna o ID do usuário
-    return None
-
-# Cadastrar um novo usuário
 def register(username, password):
     conn = db.connect()
     cursor = conn.cursor()
     password_hash = hash_password(password)
-
     try:
         cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
         conn.commit()
@@ -37,7 +29,6 @@ def register(username, password):
         conn.close()
         return False
 
-# Interface gráfica de login
 class LoginApp:
     def __init__(self, master):
         self.master = master
@@ -59,7 +50,11 @@ class LoginApp:
         self.register_button = tk.Button(master, text="Cadastrar", command=self.handle_register)
         self.register_button.pack()
 
+        self.quit_button = tk.Button(master, text="Sair", command=self.handle_quit)
+        self.quit_button.pack(pady=10)
+
     def handle_login(self):
+        from dashboard import Dashboard
         username = self.username_entry.get()
         password = self.password_entry.get()
         user_id = login(username, password)
@@ -68,7 +63,7 @@ class LoginApp:
             messagebox.showinfo("Login", f"Bem-vindo, {username}!")
             self.master.destroy()
             root = tk.Tk()
-            app = dashboard.Dashboard(root, user_id)
+            Dashboard(root, user_id)
             root.mainloop()
         else:
             messagebox.showerror("Erro", "Usuário ou senha inválidos")
@@ -81,6 +76,9 @@ class LoginApp:
             messagebox.showinfo("Cadastro", "Usuário cadastrado com sucesso")
         else:
             messagebox.showerror("Erro", "Usuário já existe")
+
+    def handle_quit(self):
+        self.master.quit()
 
 if __name__ == "__main__":
     db.init_db()

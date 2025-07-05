@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog
-import db
 import matplotlib.pyplot as plt
+import db
+from login import LoginApp
 
 class Dashboard:
     def __init__(self, master, user_id):
@@ -34,6 +35,9 @@ class Dashboard:
         self.stats_button = tk.Button(master, text="Ver Estatísticas", command=self.show_stats)
         self.stats_button.pack(pady=2)
 
+        self.logout_button = tk.Button(master, text="Logout", command=self.handle_logout)
+        self.logout_button.pack(pady=10)
+
     def refresh_books(self, search_query=None):
         self.listbox.delete(0, tk.END)
         conn = db.connect()
@@ -61,7 +65,7 @@ class Dashboard:
             conn = db.connect()
             cursor = conn.cursor()
             cursor.execute("INSERT INTO books (user_id, title, author, status) VALUES (?, ?, ?, ?)",
-                            (self.user_id, title, author, status))
+                        (self.user_id, title, author, status))
             conn.commit()
             conn.close()
             self.refresh_books()
@@ -126,15 +130,8 @@ class Dashboard:
         plt.ylabel("Quantidade")
         plt.show()
 
-if __name__ == "__main__":
-    from login import LoginApp
-    import tkinter as tk
-
-    def run_dashboard(user_id):
+    def handle_logout(self):
+        self.master.destroy()
         root = tk.Tk()
-        app = Dashboard(root, user_id)
+        LoginApp(root)
         root.mainloop()
-
-    root = tk.Tk()
-    login_app = LoginApp(root)
-    root.mainloop()
