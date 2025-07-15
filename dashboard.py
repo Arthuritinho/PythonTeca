@@ -17,7 +17,7 @@ class Dashboard:
         self.search_button = tk.Button(master, text="Buscar", command=self.search_books)
         self.search_button.pack(pady=2)
 
-        self.listbox = tk.Listbox(master, width=50)
+        self.listbox = tk.Listbox(master, width=70)
         self.listbox.pack(pady=5)
 
         self.refresh_books()
@@ -43,31 +43,63 @@ class Dashboard:
         cursor = conn.cursor()
         if search_query:
             cursor.execute("""
-                SELECT id, title, author, status FROM books
+                SELECT id, title, author, status, total_pages, pages_read, notes
+                FROM books
                 WHERE user_id=? AND (title LIKE ? OR author LIKE ?)
             """, (self.user_id, f"%{search_query}%", f"%{search_query}%"))
         else:
-            cursor.execute("SELECT id, title, author, status FROM books WHERE user_id=?", (self.user_id,))
+            cursor.execute("""
+                SELECT id, title, author, status, total_pages, pages_read, notes
+                FROM books
+                WHERE user_id=?
+            """, (self.user_id,))
         self.books = cursor.fetchall()
         conn.close()
 
         for book in self.books:
-            text = f"{book[1]} - {book[2]} [{book[3]}]"
+            progress = self.calculate_progress(book[4], book[5])
+            text = f"{book[1]} - {book[2]} [{book[3]}] - {progress}% lido"
             self.listbox.insert(tk.END, text)
+
+    def calculate_progress(self, total_pages, pages_read):
+        if not total_pages or total_pages == 0:
+            return 0
+        return round((pages_read / total_pages) * 100)
 
     def add_book(self):
         title = simpledialog.askstring("Título", "Digite o título do livro:")
-        author = simpledialog.askstring("Autor", "Digite o autor do livro:")
-        status = simpledialog.askstring("Status", "Digite o status (lido/não lido):")
+        if title is None:
+            return
 
-        if title:
-            conn = db.connect()
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO books (user_id, title, author, status) VALUES (?, ?, ?, ?)",
-                        (self.user_id, title, author, status))
-            conn.commit()
-            conn.close()
-            self.refresh_books()
+        author = simpledialog.askstring("Autor", "Digite o autor do livro:")
+        if author is None:
+            return
+
+        status = simpledialog.askstring("Status", "Digite o status (lido/não lido):")
+        if status is None:
+            return
+
+        total_pages = simpledialog.askinteger("Total de Páginas", "Digite o número total de páginas:")
+        if total_pages is None:
+            return
+
+        pages_read = simpledialog.askinteger("Páginas Lidas", "Digite quantas páginas foram lidas:")
+        if pages_read is None:
+            return
+
+        notes = simpledialog.askstring("Anotações", "Adicione alguma anotação (opcional):")
+        if notes is None:
+            notes = ""
+
+        conn = db.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO books (user_id, title, author, status, total_pages, pages_read, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (self.user_id, title, author, status, total_pages, pages_read, notes))
+        conn.commit()
+        conn.close()
+        self.refresh_books()
 
     def edit_book(self):
         selection = self.listbox.curselection()
@@ -75,17 +107,39 @@ class Dashboard:
             return messagebox.showwarning("Aviso", "Selecione um livro para editar")
 
         index = selection[0]
-        book_id, old_title, old_author, old_status = self.books[index]
+        book = self.books[index]
+        book_id, old_title, old_author, old_status, old_total, old_read, old_notes = book
 
         new_title = simpledialog.askstring("Editar Título", "Novo título:", initialvalue=old_title)
+        if new_title is None:
+            return
+
         new_author = simpledialog.askstring("Editar Autor", "Novo autor:", initialvalue=old_author)
+        if new_author is None:
+            return
+
         new_status = simpledialog.askstring("Editar Status", "Novo status:", initialvalue=old_status)
+        if new_status is None:
+            return
+
+        new_total = simpledialog.askinteger("Editar Total de Páginas", "Novo total de páginas:", initialvalue=old_total)
+        if new_total is None:
+            return
+
+        new_read = simpledialog.askinteger("Editar Páginas Lidas", "Novo total lido:", initialvalue=old_read)
+        if new_read is None:
+            return
+
+        new_notes = simpledialog.askstring("Editar Anotações", "Nova anotação:", initialvalue=old_notes)
+        if new_notes is None:
+            return
 
         conn = db.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE books SET title=?, author=?, status=? WHERE id=? AND user_id=?
-        """, (new_title, new_author, new_status, book_id, self.user_id))
+            UPDATE books SET title=?, author=?, status=?, total_pages=?, pages_read=?, notes=?
+            WHERE id=? AND user_id=?
+        """, (new_title, new_author, new_status, new_total, new_read, new_notes, book_id, self.user_id))
         conn.commit()
         conn.close()
         self.refresh_books()
@@ -124,7 +178,7 @@ class Dashboard:
         counts = [row[1] for row in data]
 
         plt.figure(figsize=(5, 4))
-        plt.bar(labels, counts, color=['green', 'gray'])
+        plt.bar(labels, counts, color=['green', 'gray', 'blue'])
         plt.title("Livros por Status")
         plt.ylabel("Quantidade")
         plt.show()
