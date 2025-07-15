@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog
 import matplotlib.pyplot as plt
 import db
-from login import LoginApp
 
 class Dashboard:
     def __init__(self, master, user_id):
@@ -131,6 +130,7 @@ class Dashboard:
         plt.show()
 
     def handle_logout(self):
+        from login import LoginApp
         self.master.destroy()
         root = tk.Tk()
         LoginApp(root)

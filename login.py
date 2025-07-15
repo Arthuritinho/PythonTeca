@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import hashlib
 import db
+import sqlite3
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -23,11 +24,11 @@ def register(username, password):
     try:
         cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
         conn.commit()
-        conn.close()
         return True
-    except:
+    except sqlite3.IntegrityError:
+        return "duplicate"
+    finally:
         conn.close()
-        return False
 
 class LoginApp:
     def __init__(self, master):
@@ -60,7 +61,7 @@ class LoginApp:
         user_id = login(username, password)
 
         if user_id:
-            messagebox.showinfo("Login", f"Bem-vindo, {username}!")
+            messagebox.showinfo("Login", f"Bem-vindo(a), {username}!")
             self.master.destroy()
             root = tk.Tk()
             Dashboard(root, user_id)
@@ -72,10 +73,14 @@ class LoginApp:
         username = self.username_entry.get()
         password = self.password_entry.get()
 
-        if register(username, password):
+        result = register(username, password)
+
+        if result == True:
             messagebox.showinfo("Cadastro", "Usuário cadastrado com sucesso")
+        elif result == "duplicate":
+            messagebox.showinfo("Usuário já cadastrado", "Este nome de usuário já está em uso. Escolha outro.")
         else:
-            messagebox.showerror("Erro", "Usuário já existe")
+            messagebox.showerror("Erro", "Ocorreu um erro ao cadastrar o usuário. Tente novamente.")
 
     def handle_quit(self):
         self.master.quit()
