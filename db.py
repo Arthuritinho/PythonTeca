@@ -26,6 +26,8 @@ def init_db():
         title TEXT NOT NULL,
         author TEXT,
         status TEXT,
+        total_pages INTEGER DEFAULT 0,
+        pages_read INTEGER DEFAULT 0,
         notes TEXT,
         FOREIGN KEY(user_id) REFERENCES users(id)
     )
