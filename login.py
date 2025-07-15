@@ -69,18 +69,41 @@ class LoginApp:
         else:
             messagebox.showerror("Erro", "Usuário ou senha inválidos")
 
+
     def handle_register(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
+        register_window = tk.Toplevel(self.master)
+        register_window.title("Cadastro de Usuário")
+        register_window.geometry("300x200")
+        register_window.resizable(False, False)
 
-        result = register(username, password)
+        frame = tk.Frame(register_window, padx= 20, pady=20)
+        frame.pack(expand=True)
 
-        if result == True:
-            messagebox.showinfo("Cadastro", "Usuário cadastrado com sucesso")
-        elif result == "duplicate":
-            messagebox.showinfo("Usuário já cadastrado", "Este nome de usuário já está em uso. Escolha outro.")
-        else:
-            messagebox.showerror("Erro", "Ocorreu um erro ao cadastrar o usuário. Tente novamente.")
+        tk.Label(frame, text="Novo Usuário:").pack(anchor='w')
+        new_username_entry = tk.Entry(frame, width=30)
+        new_username_entry.pack(pady=5)
+
+        tk.Label(frame, text="Senha:").pack(anchor='w')
+        new_password_entry = tk.Entry(frame,show="*", width=30)
+        new_password_entry.pack(pady=5)
+
+        def concluir_caddastro():
+            username = new_username_entry.get()
+            password = new_password_entry.get()
+
+            if not username or not password:
+                messagebox.showwarning("Campos vazios", "Preencha todos os campos")
+                return
+
+            result = register(username, password)
+            if result == True:
+                messagebox.showinfo("Cadastro", "Usuário cadastrado com sucesso")
+                register_window.destroy()
+            elif result == "duplicate":
+                messagebox.showinfo("Usuário já cadastrado", "Este nome de usuário já está em uso. Escolha outro.")
+            else:
+                messagebox.showerror("Erro", "Ocorreu um erro ao cadastrar o usuário. Tente novamente.")
+        tk.Button(register_window, text="Concluir Cadastro", command=concluir_caddastro).pack(pady=10)
 
     def handle_quit(self):
         self.master.quit()
