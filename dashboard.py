@@ -4,55 +4,58 @@ import matplotlib.pyplot as plt
 import db
 
 class Dashboard:
-    def __init__(self, master, user_id):
+    def __init__(self, master, user_cpf):
         self.master = master
-        self.user_id = user_id
-        master.title("BookLog - Meus Livros")
+        self.user_cpf = user_cpf  # CPF é o identificador único do usuário
+        master.title("PythonTeca - Meus Livros")
 
-        self.label = tk.Label(master, text="Livros cadastrados:")
+        self.label = tk.Label(master, text="📚 Livros cadastrados:")
         self.label.pack()
 
         self.search_entry = tk.Entry(master)
         self.search_entry.pack()
-        self.search_button = tk.Button(master, text="Buscar", command=self.search_books)
+        self.search_button = tk.Button(master, text="🔍 Buscar", command=self.search_books)
         self.search_button.pack(pady=2)
 
-        self.listbox = tk.Listbox(master, width=70)
+        self.listbox = tk.Listbox(master, width=80)
         self.listbox.pack(pady=5)
 
         self.refresh_books()
 
-        self.add_button = tk.Button(master, text="Adicionar Livro", command=self.add_book)
+        # Botões principais
+        self.add_button = tk.Button(master, text="➕ Adicionar Livro", command=self.add_book)
         self.add_button.pack(pady=2)
 
-        self.edit_button = tk.Button(master, text="Editar Selecionado", command=self.edit_book)
+        self.edit_button = tk.Button(master, text="✏️ Editar Selecionado", command=self.edit_book)
         self.edit_button.pack(pady=2)
 
-        self.remove_button = tk.Button(master, text="Remover Selecionado", command=self.remove_book)
+        self.remove_button = tk.Button(master, text="🗑️ Remover Selecionado", command=self.remove_book)
         self.remove_button.pack(pady=2)
 
-        self.stats_button = tk.Button(master, text="Ver Estatísticas", command=self.show_stats)
+        self.stats_button = tk.Button(master, text="📊 Ver Estatísticas", command=self.show_stats)
         self.stats_button.pack(pady=2)
 
-        self.logout_button = tk.Button(master, text="Logout", command=self.handle_logout)
+        self.logout_button = tk.Button(master, text="🚪 Logout", command=self.handle_logout)
         self.logout_button.pack(pady=10)
 
     def refresh_books(self, search_query=None):
+        # Atualiza a lista de livros exibidos
         self.listbox.delete(0, tk.END)
         conn = db.connect()
         cursor = conn.cursor()
+
         if search_query:
             cursor.execute("""
                 SELECT id, title, author, status, total_pages, pages_read, notes
                 FROM books
                 WHERE user_id=? AND (title LIKE ? OR author LIKE ?)
-            """, (self.user_id, f"%{search_query}%", f"%{search_query}%"))
+            """, (self.user_cpf, f"%{search_query}%", f"%{search_query}%"))
         else:
             cursor.execute("""
                 SELECT id, title, author, status, total_pages, pages_read, notes
                 FROM books
                 WHERE user_id=?
-            """, (self.user_id,))
+            """, (self.user_cpf,))
         self.books = cursor.fetchall()
         conn.close()
 
@@ -62,11 +65,13 @@ class Dashboard:
             self.listbox.insert(tk.END, text)
 
     def calculate_progress(self, total_pages, pages_read):
+        # Calcula a porcentagem lida
         if not total_pages or total_pages == 0:
             return 0
         return round((pages_read / total_pages) * 100)
 
     def add_book(self):
+        # Adiciona um novo livro ao banco
         title = simpledialog.askstring("Título", "Digite o título do livro:")
         if title is None:
             return
@@ -75,7 +80,7 @@ class Dashboard:
         if author is None:
             return
 
-        status = simpledialog.askstring("Status", "Digite o status (lido/não lido):")
+        status = simpledialog.askstring("Status", "Digite o status (desejado, em leitura, lido):")
         if status is None:
             return
 
@@ -96,12 +101,13 @@ class Dashboard:
         cursor.execute("""
             INSERT INTO books (user_id, title, author, status, total_pages, pages_read, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (self.user_id, title, author, status, total_pages, pages_read, notes))
+        """, (self.user_cpf, title, author, status, total_pages, pages_read, notes))
         conn.commit()
         conn.close()
         self.refresh_books()
 
     def edit_book(self):
+        # Edita um livro selecionado
         selection = self.listbox.curselection()
         if not selection:
             return messagebox.showwarning("Aviso", "Selecione um livro para editar")
@@ -110,6 +116,7 @@ class Dashboard:
         book = self.books[index]
         book_id, old_title, old_author, old_status, old_total, old_read, old_notes = book
 
+        # Perguntas de edição
         new_title = simpledialog.askstring("Editar Título", "Novo título:", initialvalue=old_title)
         if new_title is None:
             return
@@ -137,14 +144,16 @@ class Dashboard:
         conn = db.connect()
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE books SET title=?, author=?, status=?, total_pages=?, pages_read=?, notes=?
+            UPDATE books 
+            SET title=?, author=?, status=?, total_pages=?, pages_read=?, notes=?
             WHERE id=? AND user_id=?
-        """, (new_title, new_author, new_status, new_total, new_read, new_notes, book_id, self.user_id))
+        """, (new_title, new_author, new_status, new_total, new_read, new_notes, book_id, self.user_cpf))
         conn.commit()
         conn.close()
         self.refresh_books()
 
     def remove_book(self):
+        # Remove um livro do banco
         selection = self.listbox.curselection()
         if not selection:
             return messagebox.showwarning("Aviso", "Selecione um livro para remover")
@@ -154,19 +163,21 @@ class Dashboard:
 
         conn = db.connect()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM books WHERE id=? AND user_id=?", (book_id, self.user_id))
+        cursor.execute("DELETE FROM books WHERE id=? AND user_id=?", (book_id, self.user_cpf))
         conn.commit()
         conn.close()
         self.refresh_books()
 
     def search_books(self):
+        # Busca livros pelo título ou autor
         query = self.search_entry.get()
         self.refresh_books(search_query=query)
 
     def show_stats(self):
+        # Exibe estatísticas de leitura em gráfico de barras
         conn = db.connect()
         cursor = conn.cursor()
-        cursor.execute("SELECT status, COUNT(*) FROM books WHERE user_id=? GROUP BY status", (self.user_id,))
+        cursor.execute("SELECT status, COUNT(*) FROM books WHERE user_id=? GROUP BY status", (self.user_cpf,))
         data = cursor.fetchall()
         conn.close()
 
@@ -179,11 +190,12 @@ class Dashboard:
 
         plt.figure(figsize=(5, 4))
         plt.bar(labels, counts, color=['green', 'gray', 'blue'])
-        plt.title("Livros por Status")
+        plt.title("📊 Livros por Status")
         plt.ylabel("Quantidade")
         plt.show()
 
     def handle_logout(self):
+        # Sai para a tela de login
         from login import LoginApp
         self.master.destroy()
         root = tk.Tk()
